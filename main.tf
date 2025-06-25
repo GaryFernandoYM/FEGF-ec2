@@ -1,34 +1,3 @@
-############################################
-# main.tf — EC2 + Key Pair totalmente code-only
-############################################
-
-terraform {
-  required_version = ">= 1.3"
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.0"
-    }
-    tls = {
-      source  = "hashicorp/tls"
-      version = "~> 4.0"
-    }
-  }
-}
-
-#########################
-# 1. Variables
-#########################
-
-variable "aws_region"            { type = string }
-variable "aws_access_key_id"     { type = string }
-variable "aws_secret_access_key" { type = string }
-
-# ⚠️ No pases key_name; Terraform la generará solo
-variable "key_name_prefix" {
-  type    = string
-  default = "mi-key-fegf-"   # aparecerá como mi-key-fegf-abc123
-}
 
 #########################
 # 2. Proveedor
