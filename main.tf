@@ -4,17 +4,18 @@ provider "aws" {
   secret_key = var.aws_secret_access_key
 }
 
-# Obtener VPC por defecto
+# Obtener la VPC por defecto
 data "aws_vpc" "default" {}
 
-# 🔐 Crear un nuevo Security Group (nombre dinámico)
+# 🔐 Nuevo Security Group con nombre dinámico
 resource "aws_security_group" "ec2_sg" {
-  name_prefix = "ec2_s3_sg_fegf_"
-  description = "Permitir SSH, HTTP y HTTPS"
+  name_prefix = "ec2_s3_sg_fegf_"             # evita duplicados
+  description = "Allow SSH, HTTP, HTTPS"
   vpc_id      = data.aws_vpc.default.id
 
+  # ───────── Ingress ─────────
   ingress {
-    description = "SSH desde cualquier lugar"
+    description = "SSH from anywhere"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -37,8 +38,9 @@ resource "aws_security_group" "ec2_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # ───────── Egress ─────────
   egress {
-    description = "Todo el tráfico de salida"
+    description = "All outbound traffic"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -55,14 +57,14 @@ data "aws_iam_role" "existing_role" {
   name = "ec2_s3_role_fegf"
 }
 
-# ✅ Reutilizar IAM Instance Profile existente
+# ✅ Reutilizar Instance Profile existente
 data "aws_iam_instance_profile" "existing_profile" {
   name = "ec2_profile_fegf"
 }
 
-# 🚀 Instancia EC2 con todo configurado
+# 🚀 Instancia EC2 usando recursos reutilizados
 resource "aws_instance" "ec2_fegf" {
-  ami                         = "ami-053b0d53c279acc90" # Ubuntu Server 20.04 LTS (us-east-1)
+  ami                         = "ami-053b0d53c279acc90" # Ubuntu 20.04 (us‑east‑1)
   instance_type               = "t2.micro"
   key_name                    = var.key_name
   iam_instance_profile        = data.aws_iam_instance_profile.existing_profile.name
@@ -74,7 +76,7 @@ resource "aws_instance" "ec2_fegf" {
   }
 }
 
-# 🌐 Output con la IP pública
+# 🌐 Output IP pública
 output "public_ip" {
   value = aws_instance.ec2_fegf.public_ip
 }
