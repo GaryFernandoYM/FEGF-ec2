@@ -14,3 +14,9 @@ variable "key_name" {
   type        = string
   description = "Nombre de la llave SSH creada en AWS"
 }
+
+variable "key_name_prefix" {
+  description = "Prefijo con el que Terraform nombrará la llave SSH"
+  type        = string
+  default     = "mi-key-fegf-"
+}
