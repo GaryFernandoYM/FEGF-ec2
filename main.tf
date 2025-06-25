@@ -1,21 +1,62 @@
+############################################
+# main.tf — EC2 + Key Pair totalmente code-only
+############################################
+
+terraform {
+  required_version = ">= 1.3"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.0"
+    }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
+  }
+}
+
+#########################
+# 1. Variables
+#########################
+
+variable "aws_region"            { type = string }
+variable "aws_access_key_id"     { type = string }
+variable "aws_secret_access_key" { type = string }
+
+# ⚠️ No pases key_name; Terraform la generará solo
+variable "key_name_prefix" {
+  type    = string
+  default = "mi-key-fegf-"   # aparecerá como mi-key-fegf-abc123
+}
+
+#########################
+# 2. Proveedor
+#########################
+
 provider "aws" {
   region     = var.aws_region
   access_key = var.aws_access_key_id
   secret_key = var.aws_secret_access_key
 }
 
-# Obtener la VPC por defecto
+#########################
+# 3. VPC por defecto
+#########################
+
 data "aws_vpc" "default" {}
 
-# 🔐 Nuevo Security Group con nombre dinámico
+#########################
+# 4. Security Group
+#########################
+
 resource "aws_security_group" "ec2_sg" {
-  name_prefix = "ec2_s3_sg_fegf_"             # evita duplicados
-  description = "Allow SSH, HTTP, HTTPS"
+  name_prefix = "ec2_s3_sg_fegf_"   # evita duplicados
+  description = "Permit SSH (22), HTTP (80) y HTTPS (443)"
   vpc_id      = data.aws_vpc.default.id
 
-  # ───────── Ingress ─────────
   ingress {
-    description = "SSH from anywhere"
+    description = "SSH"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -38,45 +79,105 @@ resource "aws_security_group" "ec2_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # ───────── Egress ─────────
   egress {
-    description = "All outbound traffic"
+    description = "all-egress"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name = "sg_ec2_s3_fegf"
-  }
+  tags = { Name = "sg_ec2_s3_fegf" }
 }
 
-# ✅ Reutilizar IAM Role existente
+#########################
+# 5. IAM Role + Instance Profile
+#########################
+
+# — intenta reutilizar si ya existe —
 data "aws_iam_role" "existing_role" {
   name = "ec2_s3_role_fegf"
 }
 
-# ✅ Reutilizar Instance Profile existente
-data "aws_iam_instance_profile" "existing_profile" {
+resource "aws_iam_role" "role" {
+  count      = length(data.aws_iam_role.existing_role.*.id) == 0 ? 1 : 0
+  name       = "ec2_s3_role_fegf"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect    = "Allow",
+      Principal = { Service = "ec2.amazonaws.com" },
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "s3_readonly" {
+  count      = length(data.aws_iam_role.existing_role.*.id) == 0 ? 1 : 0
+  role       = aws_iam_role.role[0].name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+}
+
+data "aws_iam_instance_profile" "existing" {
   name = "ec2_profile_fegf"
 }
 
-# 🚀 Instancia EC2 usando recursos reutilizados
-resource "aws_instance" "ec2_fegf" {
-  ami                         = "ami-053b0d53c279acc90" # Ubuntu 20.04 (us‑east‑1)
-  instance_type               = "t2.micro"
-  key_name                    = var.key_name
-  iam_instance_profile        = data.aws_iam_instance_profile.existing_profile.name
-  vpc_security_group_ids      = [aws_security_group.ec2_sg.id]
-  associate_public_ip_address = true
-
-  tags = {
-    Name = "instancia-fegf"
-  }
+resource "aws_iam_instance_profile" "profile" {
+  count = length(data.aws_iam_instance_profile.existing.*.id) == 0 ? 1 : 0
+  name  = "ec2_profile_fegf"
+  role  = try(aws_iam_role.role[0].name, data.aws_iam_role.existing_role.name)
 }
 
-# 🌐 Output IP pública
+locals {
+  instance_profile_name = try(
+    aws_iam_instance_profile.profile[0].name,
+    data.aws_iam_instance_profile.existing.name
+  )
+}
+
+#########################
+# 6. Key Pair (100 % código)
+#########################
+
+# genera clave privada RSA
+resource "tls_private_key" "ssh_key" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+# sube la pública a AWS
+resource "aws_key_pair" "generated" {
+  key_name_prefix = var.key_name_prefix
+  public_key      = tls_private_key.ssh_key.public_key_openssh
+}
+
+# guarda la privada en el runner (p.ej. para subirla como artefacto)
+resource "local_file" "pem" {
+  content          = tls_private_key.ssh_key.private_key_pem
+  filename         = "${path.module}/generated_key.pem"
+  file_permission  = "0400"
+}
+
+#########################
+# 7. EC2
+#########################
+
+resource "aws_instance" "ec2_fegf" {
+  ami                    = "ami-053b0d53c279acc90"   # Ubuntu 20.04 us-east-1
+  instance_type          = "t2.micro"
+  key_name               = aws_key_pair.generated.key_name
+  iam_instance_profile   = local.instance_profile_name
+  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
+  associate_public_ip_address = true
+
+  tags = { Name = "instancia-fegf" }
+}
+
+#########################
+# 8. Salida
+#########################
+
 output "public_ip" {
-  value = aws_instance.ec2_fegf.public_ip
+  value       = aws_instance.ec2_fegf.public_ip
+  description = "IP pública de la instancia"
 }
