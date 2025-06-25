@@ -1,23 +1,10 @@
-
-#########################
-# 2. Proveedor
-#########################
-
 provider "aws" {
   region     = var.aws_region
   access_key = var.aws_access_key_id
   secret_key = var.aws_secret_access_key
 }
 
-#########################
-# 3. VPC por defecto
-#########################
-
 data "aws_vpc" "default" {}
-
-#########################
-# 4. Security Group
-#########################
 
 resource "aws_security_group" "ec2_sg" {
   name_prefix = "ec2_s3_sg_fegf_"   # evita duplicados
@@ -58,10 +45,6 @@ resource "aws_security_group" "ec2_sg" {
 
   tags = { Name = "sg_ec2_s3_fegf" }
 }
-
-#########################
-# 5. IAM Role + Instance Profile
-#########################
 
 # — intenta reutilizar si ya existe —
 data "aws_iam_role" "existing_role" {
@@ -104,33 +87,21 @@ locals {
   )
 }
 
-#########################
-# 6. Key Pair (100 % código)
-#########################
-
-# genera clave privada RSA
 resource "tls_private_key" "ssh_key" {
   algorithm = "RSA"
   rsa_bits  = 4096
 }
 
-# sube la pública a AWS
 resource "aws_key_pair" "generated" {
   key_name_prefix = var.key_name_prefix
   public_key      = tls_private_key.ssh_key.public_key_openssh
 }
 
-# guarda la privada en el runner (p.ej. para subirla como artefacto)
 resource "local_file" "pem" {
   content          = tls_private_key.ssh_key.private_key_pem
   filename         = "${path.module}/generated_key.pem"
   file_permission  = "0400"
 }
-
-#########################
-# 7. EC2
-#########################
-
 resource "aws_instance" "ec2_fegf" {
   ami                    = "ami-053b0d53c279acc90"   # Ubuntu 20.04 us-east-1
   instance_type          = "t2.micro"
@@ -141,10 +112,6 @@ resource "aws_instance" "ec2_fegf" {
 
   tags = { Name = "instancia-fegf" }
 }
-
-#########################
-# 8. Salida
-#########################
 
 output "public_ip" {
   value       = aws_instance.ec2_fegf.public_ip
