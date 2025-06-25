@@ -1,14 +1,13 @@
-# Proveedor AWS
 provider "aws" {
   region     = var.aws_region
   access_key = var.aws_access_key_id
   secret_key = var.aws_secret_access_key
 }
 
-# Obtener VPC por defecto
+# VPC existente
 data "aws_vpc" "default" {}
 
-# 🔐 Grupo de seguridad para EC2
+# 🔐 Security Group (aquí puedes mantenerlo si deseas recrear)
 resource "aws_security_group" "ec2_sg" {
   name        = "ec2_s3_sg_fegf"
   description = "Permitir SSH, HTTP y HTTPS"
@@ -51,49 +50,31 @@ resource "aws_security_group" "ec2_sg" {
   }
 }
 
-# 🎯 IAM Role para que EC2 acceda a S3
-resource "aws_iam_role" "ec2_s3_role" {
+# ✅ Reutilizar Role existente (no crear)
+data "aws_iam_role" "existing_role" {
   name = "ec2_s3_role_fegf"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Principal = {
-        Service = "ec2.amazonaws.com"
-      },
-      Action = "sts:AssumeRole"
-    }]
-  })
 }
 
-# Adjuntar política de solo lectura a S3
-resource "aws_iam_role_policy_attachment" "ec2_s3_policy_attach" {
-  role       = aws_iam_role.ec2_s3_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-}
-
-# Crear el perfil de instancia EC2
-resource "aws_iam_instance_profile" "ec2_profile" {
+# ✅ Reutilizar Instance Profile existente
+data "aws_iam_instance_profile" "existing_profile" {
   name = "ec2_profile_fegf"
-  role = aws_iam_role.ec2_s3_role.name
 }
 
-# 🚀 Instancia EC2 Ubuntu 20.04 (free tier)
+# 🚀 Instancia EC2 con recursos reutilizados
 resource "aws_instance" "ec2_fegf" {
-  ami = "ami-053b0d53c279acc90"  # Ubuntu Server 20.04 LTS (us-east-1)
-  instance_type               = "t2.micro"
-  key_name                    = var.key_name
-  iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
-  vpc_security_group_ids      = [aws_security_group.ec2_sg.id]
+  ami                    = "ami-053b0d53c279acc90"
+  instance_type          = "t2.micro"
+  key_name               = var.key_name
+  iam_instance_profile   = data.aws_iam_instance_profile.existing_profile.name
+  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
   associate_public_ip_address = true
 
   tags = {
     Name = "instancia-fegf"
   }
-
-
 }
-  output "public_ip" {
+
+# 🌐 Output de IP pública
+output "public_ip" {
   value = aws_instance.ec2_fegf.public_ip
 }
