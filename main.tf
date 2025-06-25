@@ -7,34 +7,14 @@ provider "aws" {
 # Obtener VPC por defecto
 data "aws_vpc" "default" {}
 
-# Buscar Security Group existente
-data "aws_security_group" "existing_sg" {
-  filter {
-    name   = "group-name"
-    values = ["ec2_s3_sg_fegf"]
-  }
-
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
-  }
-
-  # Si no existe, Terraform lo ignorará
-  depends_on = [data.aws_vpc.default]
-  lifecycle {
-    ignore_errors = true
-  }
-}
-
-# Crear SG solo si no existe
+# 🔐 Crear un nuevo Security Group (nombre dinámico)
 resource "aws_security_group" "ec2_sg" {
-  count       = length(try(data.aws_security_group.existing_sg.id, "")) == 0 ? 1 : 0
-  name        = "ec2_s3_sg_fegf"
+  name_prefix = "ec2_s3_sg_fegf_"
   description = "Permitir SSH, HTTP y HTTPS"
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
-    description = "SSH"
+    description = "SSH desde cualquier lugar"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
@@ -58,6 +38,7 @@ resource "aws_security_group" "ec2_sg" {
   }
 
   egress {
+    description = "Todo el tráfico de salida"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -69,35 +50,31 @@ resource "aws_security_group" "ec2_sg" {
   }
 }
 
-# Reutilizar Role e Instance Profile existentes
+# ✅ Reutilizar IAM Role existente
 data "aws_iam_role" "existing_role" {
   name = "ec2_s3_role_fegf"
 }
 
+# ✅ Reutilizar IAM Instance Profile existente
 data "aws_iam_instance_profile" "existing_profile" {
   name = "ec2_profile_fegf"
 }
 
-# Crear instancia EC2
+# 🚀 Instancia EC2 con todo configurado
 resource "aws_instance" "ec2_fegf" {
-  ami                    = "ami-053b0d53c279acc90"
-  instance_type          = "t2.micro"
-  key_name               = var.key_name
-  iam_instance_profile   = data.aws_iam_instance_profile.existing_profile.name
+  ami                         = "ami-053b0d53c279acc90" # Ubuntu Server 20.04 LTS (us-east-1)
+  instance_type               = "t2.micro"
+  key_name                    = var.key_name
+  iam_instance_profile        = data.aws_iam_instance_profile.existing_profile.name
+  vpc_security_group_ids      = [aws_security_group.ec2_sg.id]
   associate_public_ip_address = true
-
-  vpc_security_group_ids = [
-    length(try(data.aws_security_group.existing_sg.id, "")) > 0
-      ? data.aws_security_group.existing_sg.id
-      : aws_security_group.ec2_sg[0].id
-  ]
 
   tags = {
     Name = "instancia-fegf"
   }
 }
 
-# Salida: IP pública
+# 🌐 Output con la IP pública
 output "public_ip" {
   value = aws_instance.ec2_fegf.public_ip
 }
