@@ -98,13 +98,6 @@ resource "tls_private_key" "ssh_key" {
   algorithm = "RSA"
   rsa_bits  = 4096
 }
-
-resource "aws_key_pair" "generated" {
-  key_name   = "FEGF"
-  public_key      = tls_private_key.ssh_key.public_key_openssh
-}
-
-
 resource "aws_instance" "ec2_fegf" {
   ami                    = "ami-053b0d53c279acc90"
   instance_type          = "t2.micro"
