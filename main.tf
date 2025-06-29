@@ -100,7 +100,7 @@ resource "tls_private_key" "ssh_key" {
 }
 
 resource "aws_key_pair" "generated" {
-  key_name_prefix = var.key_name_prefix
+  key_name   = "FEGF"
   public_key      = tls_private_key.ssh_key.public_key_openssh
 }
 
