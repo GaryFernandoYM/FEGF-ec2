@@ -39,10 +39,3 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: terraform apply -auto-approve tfplan
-        
-      - name: Obtener y mostrar IP pública
-        id: ip
-        run: echo "ip=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
-
-      - name: Imprimir IP pública
-        run: echo "La IP pública de EC2 es ${{ steps.ip.outputs.ip }}"
