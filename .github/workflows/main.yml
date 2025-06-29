@@ -31,7 +31,6 @@ jobs:
             -var="aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" \
             -var="aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
             -var="aws_region=${{ secrets.AWS_REGION }}" \
-            -var="key_name_prefix=${{ secrets.KEY_NAME_PREFIX }}" \
             -var="github_token=${{ secrets.GH_TOKEN }}"
 
       - name: Aplicar infraestructura
@@ -40,13 +39,10 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: terraform apply -auto-approve tfplan
+        
+      - name: Obtener y mostrar IP pública
+        id: ip
+        run: echo "ip=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
 
-      - name: Verificar archivo .pem generado
-        run: |
-          ls -l generated_key.pem || echo "No se generó la clave .pem"
-
-      - name: Subir clave privada como artefacto
-        uses: actions/upload-artifact@v4
-        with:
-          name: llave-ssh-ec2
-          path: generated_key.pem
+      - name: Imprimir IP pública
+        run: echo "La IP pública de EC2 es ${{ steps.ip.outputs.ip }}"
