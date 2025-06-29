@@ -99,10 +99,6 @@ resource "tls_private_key" "ssh_key" {
   rsa_bits  = 4096
 }
 
-resource "aws_key_pair" "generated" {
-  key_name_prefix = var.key_name_prefix
-  public_key      = tls_private_key.ssh_key.public_key_openssh
-}
 
 
 resource "aws_instance" "ec2_fegf" {
@@ -116,6 +112,25 @@ resource "aws_instance" "ec2_fegf" {
 
   tags = { Name = "instancia-fegf" }
 }
+resource "aws_db_instance" "mysql" {
+  allocated_storage    = 20
+  engine               = "mysql"
+  engine_version       = "8.0"
+  instance_class       = "db.t3.micro"
+  username             = var.db_username
+  password             = var.db_password
+  db_name              = var.db_name
+  identifier           = "mysql-flask"
+  publicly_accessible  = true
+  skip_final_snapshot  = true
+
+  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
+
+  tags = {
+    Name = "rds-flask"
+  }
+}
+
 
 
 output "public_ip" {

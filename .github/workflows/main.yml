@@ -25,17 +25,18 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           terraform plan -out=tfplan \
             -var="aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" \
             -var="aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
             -var="aws_region=${{ secrets.AWS_REGION }}" \
-            -var="github_token=${{ secrets.GH_TOKEN }}"
+            -var="key_name_prefix=${{ secrets.KEY_NAME_PREFIX }}" \
+            -var="db_username=${{ secrets.DB_USERNAME }}" \
+            -var="db_password=${{ secrets.DB_PASSWORD }}" \
+            -var="db_name=${{ secrets.DB_NAME }}"
 
       - name: Aplicar infraestructura
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: terraform apply -auto-approve tfplan

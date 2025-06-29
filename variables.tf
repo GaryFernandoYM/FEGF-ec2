@@ -15,11 +15,21 @@ variable "key_name" {
   description = "Nombre de la llave SSH creada en AWS"
 }
 
-variable "key_name_prefix" {
-  description = "Prefijo con el que Terraform nombrará la llave SSH"
-  type        = string
-  default     = "mi-key-fegf-"
-}
 variable "github_token" {
   type = string
+}
+variable "db_username" {
+  description = "Usuario administrador de la base de datos"
+  type        = string
+}
+
+variable "db_password" {
+  description = "Contraseña del usuario administrador"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_name" {
+  description = "Nombre de la base de datos"
+  type        = string
 }
