@@ -104,15 +104,11 @@ resource "aws_key_pair" "generated" {
   public_key      = tls_private_key.ssh_key.public_key_openssh
 }
 
-resource "local_file" "pem" {
-  content          = tls_private_key.ssh_key.private_key_pem
-  filename         = "${path.module}/generated_key.pem"
-  file_permission  = "0400"
-}
+
 resource "aws_instance" "ec2_fegf" {
   ami                    = "ami-053b0d53c279acc90"
   instance_type          = "t2.micro"
-  key_name               = "generated_key"  # Reemplaza por tu clave .pem ya creada en AWS
+  key_name               = "FEGF"  # Reemplaza por tu clave .pem ya creada en AWS
   iam_instance_profile   = local.instance_profile_name
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
   associate_public_ip_address = true
