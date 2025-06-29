@@ -42,6 +42,13 @@ resource "aws_security_group" "ec2_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  ingress {
+  description = "Flask App"
+  from_port   = 5000
+  to_port     = 5000
+  protocol    = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+}
 
   tags = { Name = "sg_ec2_s3_fegf" }
 }
@@ -103,15 +110,17 @@ resource "local_file" "pem" {
   file_permission  = "0400"
 }
 resource "aws_instance" "ec2_fegf" {
-  ami                    = "ami-053b0d53c279acc90"   # Ubuntu 20.04 us-east-1
+  ami                    = "ami-053b0d53c279acc90"
   instance_type          = "t2.micro"
   key_name               = aws_key_pair.generated.key_name
   iam_instance_profile   = local.instance_profile_name
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
   associate_public_ip_address = true
 
+
   tags = { Name = "instancia-fegf" }
 }
+
 
 output "public_ip" {
   value       = aws_instance.ec2_fegf.public_ip

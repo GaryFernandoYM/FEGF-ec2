@@ -20,3 +20,6 @@ variable "key_name_prefix" {
   type        = string
   default     = "mi-key-fegf-"
 }
+variable "github_token" {
+  type = string
+}
