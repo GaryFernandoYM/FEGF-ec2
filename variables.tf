@@ -18,18 +18,3 @@ variable "key_name" {
 variable "github_token" {
   type = string
 }
-variable "db_username" {
-  description = "Usuario administrador de la base de datos"
-  type        = string
-}
-
-variable "db_password" {
-  description = "Contraseña del usuario administrador"
-  type        = string
-  sensitive   = true
-}
-
-variable "db_name" {
-  description = "Nombre de la base de datos"
-  type        = string
-}
